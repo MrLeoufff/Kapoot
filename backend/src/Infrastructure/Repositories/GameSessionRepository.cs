@@ -16,6 +16,9 @@ public class GameSessionRepository(AppDbContext db) : IGameSessionRepository
     public async Task<IReadOnlyList<GameSession>> GetByHostIdAsync(Guid hostId, CancellationToken cancellationToken = default) =>
         await db.GameSessions.Where(x => x.HostId == hostId).OrderByDescending(x => x.CreatedAt).ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<GameSession>> GetByQuizIdAsync(Guid quizId, CancellationToken cancellationToken = default) =>
+        await db.GameSessions.Where(x => x.QuizId == quizId).ToListAsync(cancellationToken);
+
     public async Task<GameSession> AddAsync(GameSession session, CancellationToken cancellationToken = default)
     {
         db.GameSessions.Add(session);
