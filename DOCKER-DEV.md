@@ -11,7 +11,7 @@ Pour faire tourner Kapoot en dev avec la même stack que la prod (MySQL + API + 
 Aucune donnée sensible n’est dans les fichiers compose. Il faut un fichier `.env.dev` à la racine :
 
 1. Copier le template : `cp .env.dev.example .env.dev` (ou sous Windows : copier `.env.dev.example` en `.env.dev`)
-2. Les valeurs par défaut du template permettent de démarrer en local ; tu peux les modifier dans `.env.dev` (ne pas committer `.env.dev`). **MySQL exige des mots de passe non vides.**
+2. Renseigner `MYSQL_ROOT_PASSWORD` et `MYSQL_PASSWORD` dans `.env.dev` (valeurs non vides obligatoires pour MySQL). Ne jamais committer `.env.dev`.
 
 ## Lancer la stack dev
 
