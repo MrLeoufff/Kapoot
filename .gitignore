@@ -91,6 +91,14 @@ DOCKER.md
 # *.env.local
 
 # =========================
+# Build / déploiement
+# =========================
+backend/publish/
+docx_extract/
+*.tar
+*.zip
+
+# =========================
 # Divers
 # =========================
 *.bak
