@@ -1,0 +1,54 @@
+﻿# KAPOOT – prod (MySQL + API + frontend)
+# Aucune donnée sensible : utiliser un fichier .env avec MYSQL_ROOT_PASSWORD et MYSQL_PASSWORD.
+# Lancer : docker compose --env-file .env up -d
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: kapoot-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: kapoot
+      MYSQL_USER: kapoot
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    expose:
+      - "3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend/src
+      dockerfile: Api/Dockerfile
+    container_name: kapoot-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Server=mysql;Database=kapoot;User=kapoot;Password=${MYSQL_PASSWORD};
+    depends_on:
+      mysql:
+        condition: service_healthy
+    expose:
+      - "80"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: kapoot-frontend
+    depends_on:
+      - api
+    networks:
+      - default
+      - web
+
+volumes:
+  mysql-data:
+
+networks:
+  web:
+    external: true

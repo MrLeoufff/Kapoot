@@ -1,0 +1,19 @@
+<Solution>
+  <Folder Name="/backend/" />
+  <Folder Name="/backend/src/" />
+  <Folder Name="/backend/src/Api/">
+    <Project Path="backend/src/Api/Kapoot.Api.csproj" />
+  </Folder>
+  <Folder Name="/backend/src/Application/">
+    <Project Path="backend/src/Application/Kapoot.Application.csproj" />
+  </Folder>
+  <Folder Name="/backend/src/Domain/">
+    <Project Path="backend/src/Domain/Kapoot.Domain.csproj" />
+  </Folder>
+  <Folder Name="/backend/src/Infrastructure/">
+    <Project Path="backend/src/Infrastructure/Kapoot.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/backend/tests/">
+    <Project Path="backend/tests/Kapoot.Tests/Kapoot.Tests.csproj" />
+  </Folder>
+</Solution>

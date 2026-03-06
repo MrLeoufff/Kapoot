@@ -1,0 +1,99 @@
+# =========================
+# Environnement / secrets
+# =========================
+.env
+.env.*
+!.env.example
+!.env.dev.example
+
+# =========================
+# .NET / Backend
+# =========================
+bin/
+obj/
+*.user
+*.userosscache
+*.sln.docstates
+*.dll
+*.pdb
+*.exe
+*.cache
+project.lock.json
+project.fragment.lock.json
+artifacts/
+[Dd]ebug/
+[Rr]elease/
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.VisualState.xml
+*.ncrunchproject
+*.ncrunchsolution
+.vs/
+*.rsuser
+*.suo
+*.userprefs
+*.pidb
+*.DotSettings.user
+
+# SQLite (dev local)
+*.db
+*.db-shm
+*.db-wal
+
+# =========================
+# Node / Frontend
+# =========================
+node_modules/
+dist/
+dist-ssr/
+*.local
+.npm
+.yarn/
+.pnp.*
+.npmrc
+.yarnrc
+*.tsbuildinfo
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# =========================
+# IDE / Éditeurs
+# =========================
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+*.swp
+*.swo
+*~
+
+# =========================
+# OS
+# =========================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# =========================
+# Docker / doc prod
+# =========================
+DOCKER.md
+# docker-compose.override.yml
+# *.env.local
+
+# =========================
+# Divers
+# =========================
+*.bak
+*.tmp
+*.temp
+.cache/

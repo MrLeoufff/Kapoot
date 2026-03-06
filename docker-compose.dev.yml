@@ -1,0 +1,50 @@
+# KAPOOT – mode développement (à partager avec l’équipe)
+# Aucune donnée sensible : utiliser .env.dev (voir .env.dev.example).
+# Lancer : docker compose --env-file .env.dev -f docker-compose.dev.yml up -d
+# App : http://localhost:8080  |  API : http://localhost:5000  |  MySQL : localhost:3306
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: kapoot-mysql-dev
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: kapoot
+      MYSQL_USER: kapoot
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - mysql-data-dev:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend/src
+      dockerfile: Api/Dockerfile
+    container_name: kapoot-api-dev
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: Server=mysql;Database=kapoot;User=kapoot;Password=${MYSQL_PASSWORD};
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "5000:80"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: kapoot-frontend-dev
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+
+volumes:
+  mysql-data-dev:
