@@ -5,9 +5,15 @@
       <p v-if="pseudo" class="pseudo">Connecté en tant que {{ pseudo }}</p>
     </div>
 
+    <!-- Rappel pour mobile : ne pas quitter la page -->
+    <p v-if="connected && !gameEnded" class="mobile-warning">
+      📱 Sur téléphone ou tablette : gardez cette page ouverte (ne la quittez pas et ne changez pas d’onglet), sinon vous serez déconnecté de la partie.
+    </p>
+
     <!-- Pas encore rejoint : formulaire pseudo (sans compte requis) -->
     <section v-if="!playerId && code" class="join-section">
       <p class="join-intro">Entrez votre pseudo pour rejoindre la partie. Aucune connexion requise.</p>
+      <p class="join-mobile-hint">📱 Si vous jouez sur portable, gardez cette page ouverte pendant la partie, sinon vous serez déconnecté.</p>
       <form class="join-form" @submit.prevent="submitJoin">
         <label for="join-pseudo">Votre pseudo</label>
         <input
@@ -373,6 +379,24 @@ async function submitMultipleChoices() {
   margin: 0 0 1rem;
   color: var(--color-text-muted);
   font-size: 0.95rem;
+}
+
+.join-mobile-hint {
+  margin: 0 0 1rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 193, 7, 0.15);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  font-size: 0.9rem;
+}
+
+.mobile-warning {
+  margin: 0 0 1rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 193, 7, 0.15);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  font-size: 0.9rem;
 }
 
 .join-form label {

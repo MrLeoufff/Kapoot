@@ -3,6 +3,7 @@
     <section class="join-card">
       <h1>Rejoindre une partie</h1>
       <p class="intro">Entrez le code de la partie communiqué par l’animateur. Aucune connexion requise.</p>
+      <p class="mobile-hint">📱 Sur téléphone ou tablette : une fois dans la partie, gardez cette page ouverte (ne la quittez pas, ne changez pas d’onglet), sinon vous serez déconnecté.</p>
       <form class="join-form" @submit.prevent="submitCode">
         <label for="join-code">Code de la partie</label>
         <input
@@ -79,8 +80,17 @@ function submitCode() {
 
 .intro {
   color: var(--color-text-muted);
-  margin: 0 0 1.5rem;
+  margin: 0 0 0.5rem;
   font-size: 0.95rem;
+}
+
+.mobile-hint {
+  margin: 0 0 1.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 193, 7, 0.15);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  font-size: 0.9rem;
 }
 
 .join-form label {
