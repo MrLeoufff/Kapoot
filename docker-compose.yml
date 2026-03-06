@@ -7,10 +7,10 @@ services:
     image: mysql:8.0
     container_name: kapoot-mysql
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?}
       MYSQL_DATABASE: kapoot
       MYSQL_USER: kapoot
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?}
     volumes:
       - mysql-data:/var/lib/mysql
     expose:
@@ -28,7 +28,7 @@ services:
     container_name: kapoot-api
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__DefaultConnection=Server=mysql;Database=kapoot;User=kapoot;Password=${MYSQL_PASSWORD};
+      - ConnectionStrings__DefaultConnection=Server=mysql;Database=kapoot;User=kapoot;Password=${MYSQL_PASSWORD:?};
     depends_on:
       mysql:
         condition: service_healthy
