@@ -6,7 +6,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { User } from '@/types'
 import { authService } from '@/services/auth.service'
-import { getAuthToken, setAuthToken } from '@/services/api/http'
+import { getAuthToken, setAuthToken, setTokenGetter } from '@/services/api/http'
 
 const STORAGE_KEY_USER = 'kapoot_user'
 const STORAGE_KEY_TOKEN = 'kapoot_token'
@@ -40,6 +40,7 @@ export const useAuthStore = defineStore('auth', () => {
   const storedToken = loadStoredToken()
   if (storedToken) setAuthToken(storedToken)
   const token = ref<string | null>(getAuthToken())
+  setTokenGetter(() => token.value)
 
   const isAuthenticated = computed(() => !!user.value && !!token.value)
 

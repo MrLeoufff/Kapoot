@@ -1,5 +1,8 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    # Transmettre l'en-tête Authorization à PHP (Apache le supprime par défaut)
+    RewriteCond %{HTTP:Authorization} ^(.+)$
+    RewriteRule ^ - [E=HTTP_AUTHORIZATION:%1]
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^(.*)$ index.php [QSA,L]
 </IfModule>

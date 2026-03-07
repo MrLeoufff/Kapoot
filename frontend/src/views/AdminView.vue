@@ -154,7 +154,7 @@ async function loadUsers() {
   loadingUsers.value = true
   usersError.value = ''
   try {
-    users.value = await adminService.getUsers()
+    users.value = await adminService.getUsers(auth.token ?? undefined)
   } catch (e) {
     usersError.value = e instanceof Error ? e.message : 'Erreur chargement utilisateurs'
     if (String(usersError.value).includes('401')) {
@@ -170,7 +170,7 @@ async function loadQuizzes() {
   loadingQuizzes.value = true
   quizzesError.value = ''
   try {
-    quizzes.value = await adminService.getQuizzes()
+    quizzes.value = await adminService.getQuizzes(auth.token ?? undefined)
   } catch (e) {
     quizzesError.value = e instanceof Error ? e.message : 'Erreur chargement quiz'
   } finally {
@@ -181,7 +181,7 @@ async function loadQuizzes() {
 async function toggleAdmin(u: AdminUser) {
   togglingUserId.value = u.id
   try {
-    await adminService.setUserAdmin(u.id, !u.isAdmin)
+    await adminService.setUserAdmin(u.id, !u.isAdmin, auth.token ?? undefined)
     u.isAdmin = !u.isAdmin
   } catch (e) {
     alert(e instanceof Error ? e.message : 'Erreur')
@@ -195,7 +195,7 @@ function confirmDeleteUser(u: AdminUser) {
   confirmMessage.value = `Supprimer définitivement "${u.pseudo}" (${u.email}) ? Ses quiz et parties seront aussi supprimés.`
   confirmAction = async () => {
     deletingUserId.value = u.id
-    await adminService.deleteUser(u.id)
+    await adminService.deleteUser(u.id, auth.token ?? undefined)
     users.value = users.value.filter((x) => x.id !== u.id)
     closeConfirm()
     deletingUserId.value = null
@@ -208,7 +208,7 @@ function confirmDeleteQuiz(q: QuizSummary) {
   confirmMessage.value = `Supprimer définitivement le quiz "${q.title}" ?`
   confirmAction = async () => {
     deletingQuizId.value = q.id
-    await adminService.deleteQuiz(q.id)
+    await adminService.deleteQuiz(q.id, auth.token ?? undefined)
     quizzes.value = quizzes.value.filter((x) => x.id !== q.id)
     closeConfirm()
     deletingQuizId.value = null

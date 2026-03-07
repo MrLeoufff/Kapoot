@@ -1,0 +1,2 @@
+# Les clés *.pem sont générées au premier démarrage du conteneur API (entrypoint)
+# et sont dans .gitignore. Ce dossier doit exister pour le bind mount Docker.
