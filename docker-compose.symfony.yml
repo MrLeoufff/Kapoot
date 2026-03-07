@@ -1,0 +1,74 @@
+# KAPOOT – prod avec backend Symfony + Mercure
+# Utiliser un fichier .env avec MYSQL_ROOT_PASSWORD, MYSQL_PASSWORD, etc.
+# Lancer : docker compose --env-file .env -f docker-compose.symfony.yml up -d
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: kapoot-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: kapoot
+      MYSQL_USER: kapoot
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    expose:
+      - "3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend-symfony
+      dockerfile: Dockerfile
+    container_name: kapoot-api-symfony
+    environment:
+      APP_ENV: prod
+      APP_SECRET: ${APP_SECRET}
+      DATABASE_URL: mysql://kapoot:${MYSQL_PASSWORD}@mysql:3306/kapoot?serverVersion=8.0&charset=utf8mb4
+      MERCURE_URL: http://mercure:80/.well-known/mercure
+      MERCURE_PUBLIC_URL: ${MERCURE_PUBLIC_URL:-https://votredomaine.com/.well-known/mercure}
+      MERCURE_JWT_SECRET: ${MERCURE_JWT_SECRET}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-%kernel.project_dir%/config/jwt/private.pem}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-%kernel.project_dir%/config/jwt/public.pem}
+      JWT_PASSPHRASE: ${JWT_PASSPHRASE:-}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    expose:
+      - "80"
+
+  mercure:
+    image: dunglas/mercure
+    container_name: kapoot-mercure
+    environment:
+      MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_JWT_SECRET}
+      MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_JWT_SECRET}
+      MERCURE_EXTRA_DIRECTIVES: "cors_origins ${MERCURE_CORS_ORIGINS:-*}"
+    expose:
+      - "80"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NGINX_CONF: nginx.symfony.conf
+    container_name: kapoot-frontend
+    depends_on:
+      - api
+      - mercure
+    networks:
+      - default
+      - web
+
+volumes:
+  mysql-data:
+
+networks:
+  web:
+    external: true

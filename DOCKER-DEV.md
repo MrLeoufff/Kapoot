@@ -1,6 +1,6 @@
-# Mode développement avec Docker (à partager avec l’équipe)
+# Mode développement avec Docker
 
-Pour faire tourner Kapoot en dev avec la même stack que la prod (MySQL + API + frontend), sans réseau externe ni sous-domaine. Voir **DOCKER.md** pour la mise en production.
+Pour faire tourner Kapoot en dev avec la même stack que la prod (MySQL + API + frontend). Deux backends possibles : **C# (SignalR)** ou **Symfony (Mercure)**. Voir **DOCKER.md** pour la mise en production.
 
 ## Prérequis
 
@@ -8,37 +8,70 @@ Pour faire tourner Kapoot en dev avec la même stack que la prod (MySQL + API + 
 
 ## Variables d’environnement (obligatoire)
 
-Aucune donnée sensible n’est dans les fichiers compose. Il faut un fichier `.env.dev` à la racine :
+Aucune donnée sensible n’est dans les fichiers compose. Il faut un fichier **`.env.dev`** à la racine du projet :
 
-1. Copier le template : `cp .env.dev.example .env.dev` (ou sous Windows : copier `.env.dev.example` en `.env.dev`)
-2. Renseigner `MYSQL_ROOT_PASSWORD` et `MYSQL_PASSWORD` dans `.env.dev` (valeurs non vides obligatoires pour MySQL). Ne jamais committer `.env.dev`.
+1. Copier le template : `cp .env.dev.example .env.dev` (sous Windows : copier `.env.dev.example` en `.env.dev`)
+2. Renseigner dans `.env.dev` :
+   - `MYSQL_ROOT_PASSWORD` et `MYSQL_PASSWORD` (valeurs non vides pour MySQL)
+   - Pour la stack **Symfony** : `MERCURE_JWT_SECRET` (optionnel, valeur par défaut dans le compose), `APP_SECRET`, et éventuellement `JWT_PASSPHRASE` si vous générez les clés JWT à la main
 
-## Lancer la stack dev
+Ne jamais committer `.env.dev`.
 
-À la racine du projet (`C:\Kapoot`) :
+## Choix du backend
+
+| Stack | Fichier Compose | Backend | Temps réel |
+|-------|-----------------|---------|------------|
+| **C#** | `docker-compose.dev.yml` | API .NET 8 + SignalR | SignalR (`/hubs/game`) |
+| **Symfony** | `docker-compose.dev-symfony.yml` | API Symfony 7 + Mercure | Mercure (SSE via frontend proxy) |
+
+Une seule stack à la fois (même MySQL dev, même ports). Arrêter l’une avant de lancer l’autre si vous basculez.
+
+## Lancer la stack dev (backend C#)
+
+À la racine du projet :
 
 ```bash
 docker compose --env-file .env.dev -f docker-compose.dev.yml up -d
 ```
 
-## Accès
+## Lancer la stack dev (backend Symfony)
 
-| Cible                           | URL                                                                               |
-| ------------------------------- | --------------------------------------------------------------------------------- |
-| **Application**                 | http://localhost:8080                                                             |
-| **API directe** (Postman, etc.) | http://localhost:5000                                                             |
-| **MySQL**                       | `localhost:3306` (user `kapoot`, mot de passe = `MYSQL_PASSWORD` dans `.env.dev`) |
+À la racine du projet :
 
-Les conteneurs dev ont des noms et un volume dédiés (`mysql-data-dev`) pour ne pas mélanger avec la prod. L’API tourne en `ASPNETCORE_ENVIRONMENT=Development`.
+```bash
+docker compose --env-file .env.dev -f docker-compose.dev-symfony.yml up -d
+```
+
+Au premier démarrage, les clés JWT (Lexik) sont générées automatiquement dans le conteneur. Pour créer le schéma de la base :
+
+```bash
+docker exec -it kapoot-api-symfony-dev bin/console doctrine:schema:create
+```
+
+(ou `doctrine:migrations:migrate` si vous utilisez les migrations.)
+
+## Accès (commun aux deux stacks)
+
+| Cible | URL |
+|-------|-----|
+| **Application** | http://localhost:8080 |
+| **API directe** (Postman, etc.) | http://localhost:5000 |
+| **MySQL** | `localhost:3306` (user `kapoot`, mot de passe = `MYSQL_PASSWORD` dans `.env.dev`) |
+
+Avec la stack Symfony, le frontend détecte automatiquement le backend (GET `/api/game/mercure-url`) et utilise Mercure ; avec la stack C#, il utilise SignalR.
 
 ## Commandes utiles
 
-| Commande                                                             | Description                            |
-| -------------------------------------------------------------------- | -------------------------------------- |
-| `docker compose --env-file .env.dev -f docker-compose.dev.yml up -d` | Démarre la stack dev                   |
-| `docker compose -f docker-compose.dev.yml down`                      | Arrête les conteneurs dev              |
-| `docker compose -f docker-compose.dev.yml down -v`                   | Arrête et supprime le volume MySQL dev |
-| `docker compose -f docker-compose.dev.yml logs -f api`               | Logs de l’API                          |
-| `docker compose -f docker-compose.dev.yml build --no-cache`          | Reconstruire les images sans cache     |
+| Commande | Description |
+|----------|-------------|
+| `docker compose --env-file .env.dev -f docker-compose.dev.yml up -d` | Démarre la stack dev **C#** |
+| `docker compose --env-file .env.dev -f docker-compose.dev-symfony.yml up -d` | Démarre la stack dev **Symfony** |
+| `docker compose -f docker-compose.dev.yml down` | Arrête les conteneurs dev C# |
+| `docker compose -f docker-compose.dev-symfony.yml down` | Arrête les conteneurs dev Symfony |
+| `docker compose -f docker-compose.dev.yml down -v` | Arrête et supprime le volume MySQL dev |
+| `docker compose -f docker-compose.dev.yml logs -f api` | Logs de l’API C# |
+| `docker compose -f docker-compose.dev-symfony.yml logs -f api` | Logs de l’API Symfony |
+| `docker compose -f docker-compose.dev.yml build --no-cache` | Reconstruire les images (C#) sans cache |
+| `docker compose -f docker-compose.dev-symfony.yml build --no-cache` | Reconstruire les images (Symfony) sans cache |
 
-Le schéma (tables) est créé automatiquement au premier démarrage de l’API (`EnsureCreated()`).
+Avec la stack C#, le schéma MySQL est créé automatiquement au premier démarrage de l’API (`EnsureCreated()`). Avec Symfony, exécuter une fois `doctrine:schema:create` (ou les migrations) comme indiqué ci-dessus.

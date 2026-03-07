@@ -1,0 +1,71 @@
+# KAPOOT – dev avec backend Symfony + Mercure
+# Lancer : docker compose --env-file .env.dev -f docker-compose.dev-symfony.yml up -d
+# App : http://localhost:8080  |  API : http://localhost:5000  |  MySQL : localhost:3306  |  Mercure via frontend proxy
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: kapoot-mysql-dev
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: kapoot
+      MYSQL_USER: kapoot
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - mysql-data-dev:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend-symfony
+      dockerfile: Dockerfile
+    container_name: kapoot-api-symfony-dev
+    environment:
+      APP_ENV: dev
+      APP_SECRET: ${APP_SECRET:-change-me-in-env-dev}
+      DATABASE_URL: mysql://kapoot:${MYSQL_PASSWORD}@mysql:3306/kapoot?serverVersion=8.0&charset=utf8mb4
+      MERCURE_URL: http://mercure:80/.well-known/mercure
+      MERCURE_PUBLIC_URL: http://localhost:8080/.well-known/mercure
+      MERCURE_JWT_SECRET: ${MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-%kernel.project_dir%/config/jwt/private.pem}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-%kernel.project_dir%/config/jwt/public.pem}
+      JWT_PASSPHRASE: ${JWT_PASSPHRASE:-}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "5000:80"
+
+  mercure:
+    image: dunglas/mercure
+    container_name: kapoot-mercure-dev
+    environment:
+      SERVER_NAME: ':80'
+      MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
+      MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
+      MERCURE_EXTRA_DIRECTIVES: "cors_origins *"
+    command: /usr/bin/caddy run --config /etc/caddy/Caddyfile
+    expose:
+      - "80"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NGINX_CONF: nginx.symfony.conf
+    container_name: kapoot-frontend-dev
+    depends_on:
+      - api
+      - mercure
+    ports:
+      - "8080:80"
+
+volumes:
+  mysql-data-dev:
