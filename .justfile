@@ -9,3 +9,15 @@ build-dev:
 [group('docker')]
 run-dev:
     UID="{{ uid }}" GID="{{ gid }}" docker compose -f {{ dev_compose_file }} --env-file .env --env-file .env.dev up -d
+
+[group('docker')]
+down-dev:
+    UID="{{ uid }}" GID="{{ gid }}" docker compose -f {{ dev_compose_file }} --env-file .env --env-file .env.dev down
+
+[group('docker')]
+logs service:
+    docker logs {{ "kapoot-" + service + "-dev" }}
+
+[group('docker')]
+exec service:
+    docker exec -it {{ "kapoot-" + service + "-dev" }} sh
