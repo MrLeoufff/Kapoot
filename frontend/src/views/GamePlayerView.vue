@@ -147,8 +147,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import * as signalR from '@microsoft/signalr'
-import { createGameHubConnection } from '@/services/game-hub.service'
+import type { IGameRealtime } from '@/services/game-realtime.types'
+import { createGameRealtime } from '@/services/game-realtime.service'
 import { gameSessionService } from '@/services/game-session.service'
 import { useAuthStore } from '@/stores/auth.store'
 
@@ -159,8 +159,8 @@ const code = computed(() => String(route.params.code ?? '').toUpperCase())
 const playerId = computed(() => (route.query.playerId as string) ?? '')
 
 const pseudo = ref('')
-const connection = ref<signalR.HubConnection | null>(null)
-const connected = ref(false)
+const realtime = ref<IGameRealtime | null>(null)
+const connected = computed(() => realtime.value?.connected?.value ?? false)
 const connectionError = ref('')
 
 const joinPseudo = ref('')
@@ -230,60 +230,51 @@ const myResult = computed(() => {
 async function startConnection() {
   const pid = playerId.value
   if (!pid) return
-  const conn = createGameHubConnection(pid)
-  connection.value = conn
-
-  conn.on('ShowQuestion', (payload: ShowQuestionPayload) => {
-    questionResultExplanation.value = null
-    currentQuestion.value = payload
-    answerSent.value = false
-    selectedChoiceIds.value = []
-    pointsEarnedDisplay.value = null
-  })
-
-  conn.on('PointsEarned', (payload: { playerId?: string; PlayerId?: string; pointsEarned?: number; PointsEarned?: number; rank?: number; Rank?: number }) => {
-    const id = payload.playerId ?? payload.PlayerId ?? ''
-    if (id !== playerId.value) return
-    const points = payload.pointsEarned ?? payload.PointsEarned ?? 0
-    const rank = payload.rank ?? payload.Rank ?? 0
-    if (pointsEarnedTimeout) clearTimeout(pointsEarnedTimeout)
-    if (points > 0) {
-      pointsEarnedDisplay.value = { points, rank }
-      pointsEarnedTimeout = setTimeout(() => {
-        pointsEarnedDisplay.value = null
-        pointsEarnedTimeout = null
-      }, 3000)
-    } else {
-      pointsEarnedDisplay.value = null
-    }
-  })
-
-  conn.on('ShowResult', (payload: { questionId?: string; explanation?: string | null; Explanation?: string | null }) => {
-    const raw = payload?.explanation ?? payload?.Explanation
-    questionResultExplanation.value = (typeof raw === 'string' && raw.trim()) ? raw.trim() : null
-    currentQuestion.value = null
-  })
-
-  conn.on('Ranking', (payload: unknown) => {
-    ranking.value = normalizeRanking(payload)
-  })
-
-  conn.on('GameEnded', (payload: unknown) => {
-    questionResultExplanation.value = null
-    ranking.value = normalizeRanking(payload)
-    gameEnded.value = true
-    currentQuestion.value = null
-  })
-
+  connectionError.value = ''
   try {
-    await conn.start()
-    await conn.invoke('JoinAsPlayer', code.value, pid)
-    connected.value = true
-    connectionError.value = ''
+    const rt = await createGameRealtime()
+    realtime.value = rt
+    rt.on('ShowQuestion', (payload: ShowQuestionPayload) => {
+      questionResultExplanation.value = null
+      currentQuestion.value = payload
+      answerSent.value = false
+      selectedChoiceIds.value = []
+      pointsEarnedDisplay.value = null
+    })
+    rt.on('PointsEarned', (payload: { playerId?: string; PlayerId?: string; pointsEarned?: number; PointsEarned?: number; rank?: number; Rank?: number }) => {
+      const id = (payload as { playerId?: string; PlayerId?: string }).playerId ?? (payload as { PlayerId?: string }).PlayerId ?? ''
+      if (id !== playerId.value) return
+      const points = (payload as { pointsEarned?: number; PointsEarned?: number }).pointsEarned ?? (payload as { PointsEarned?: number }).PointsEarned ?? 0
+      const rank = (payload as { rank?: number; Rank?: number }).rank ?? (payload as { Rank?: number }).Rank ?? 0
+      if (pointsEarnedTimeout) clearTimeout(pointsEarnedTimeout)
+      if (points > 0) {
+        pointsEarnedDisplay.value = { points, rank }
+        pointsEarnedTimeout = setTimeout(() => {
+          pointsEarnedDisplay.value = null
+          pointsEarnedTimeout = null
+        }, 3000)
+      } else {
+        pointsEarnedDisplay.value = null
+      }
+    })
+    rt.on('ShowResult', (payload: { questionId?: string; explanation?: string | null; Explanation?: string | null }) => {
+      const raw = (payload as { explanation?: string | null; Explanation?: string | null })?.explanation ?? (payload as { Explanation?: string | null })?.Explanation
+      questionResultExplanation.value = (typeof raw === 'string' && raw.trim()) ? raw.trim() : null
+      currentQuestion.value = null
+    })
+    rt.on('Ranking', (payload: unknown) => {
+      ranking.value = normalizeRanking(payload)
+    })
+    rt.on('GameEnded', (payload: unknown) => {
+      questionResultExplanation.value = null
+      ranking.value = normalizeRanking(payload)
+      gameEnded.value = true
+      currentQuestion.value = null
+    })
+    await rt.connectPlayer(code.value, pid)
     pseudo.value = (route.query.pseudo as string) || 'Joueur'
   } catch (e) {
     connectionError.value = e instanceof Error ? e.message : 'Connexion impossible.'
-    connected.value = false
   }
 }
 
@@ -323,33 +314,32 @@ onUnmounted(async () => {
     clearTimeout(pointsEarnedTimeout)
     pointsEarnedTimeout = null
   }
-  const conn = connection.value
-  if (conn) {
+  const rt = realtime.value
+  if (rt) {
     try {
-      await conn.stop()
+      await rt.disconnect()
     } catch {
       // ignore
     }
-    connection.value = null
+    realtime.value = null
   }
-  connected.value = false
 })
 
 async function submitChoice(choiceId: string) {
-  if (!currentQuestion.value || !connection.value || answerSent.value) return
+  if (!currentQuestion.value || !realtime.value || answerSent.value) return
   answerSent.value = true
   try {
-    await connection.value.invoke('SubmitAnswer', currentQuestion.value.questionId, [choiceId])
+    await realtime.value.submitAnswer(currentQuestion.value.questionId, [choiceId])
   } catch {
     answerSent.value = false
   }
 }
 
 async function submitMultipleChoices() {
-  if (!currentQuestion.value || !connection.value || answerSent.value || selectedChoiceIds.value.length === 0) return
+  if (!currentQuestion.value || !realtime.value || answerSent.value || selectedChoiceIds.value.length === 0) return
   answerSent.value = true
   try {
-    await connection.value.invoke('SubmitAnswer', currentQuestion.value.questionId, selectedChoiceIds.value)
+    await realtime.value.submitAnswer(currentQuestion.value.questionId, selectedChoiceIds.value)
   } catch {
     answerSent.value = false
   }

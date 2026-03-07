@@ -104,10 +104,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, type Ref } from 'vue'
 import { useRoute } from 'vue-router'
-import * as signalR from '@microsoft/signalr'
-import { createGameHubConnection } from '@/services/game-hub.service'
+import type { IGameRealtime } from '@/services/game-realtime.types'
+import { createGameRealtime } from '@/services/game-realtime.service'
 import { gameSessionService } from '@/services/game-session.service'
 import { quizService } from '@/services/quiz.service'
 import type { QuestionDetail } from '@/types'
@@ -115,8 +115,8 @@ import type { QuestionDetail } from '@/types'
 const route = useRoute()
 const code = computed(() => String(route.params.code ?? '').toUpperCase())
 
-const connection = ref<signalR.HubConnection | null>(null)
-const connected = ref(false)
+const realtime = ref<IGameRealtime | null>(null)
+const connected = computed(() => (realtime.value?.connected as Ref<boolean> | undefined)?.value ?? false)
 const connectionError = ref('')
 const players = ref<{ id: string; pseudo: string }[]>([])
 let playersInterval: ReturnType<typeof setInterval> | null = null
@@ -179,34 +179,30 @@ async function loadQuizAndPlayers() {
 
 onMounted(async () => {
   connectionError.value = ''
-  const conn = createGameHubConnection(null)
-  connection.value = conn
-  conn.on('GameEnded', () => {
-    gameEnded.value = true
-  })
-
-  conn.on('Ranking', (payload: unknown) => {
-    ranking.value = normalizeRanking(payload)
-  })
-
-  conn.on('PointsEarned', (payload: { pseudo?: string; Pseudo?: string; pointsEarned?: number; PointsEarned?: number; rank?: number; Rank?: number }) => {
-    const pseudo = payload.pseudo ?? payload.Pseudo ?? ''
-    const points = payload.pointsEarned ?? payload.PointsEarned ?? 0
-    const rank = payload.rank ?? payload.Rank ?? 0
-    pointsEarnedLog.value = [{ pseudo, points, rank }, ...pointsEarnedLog.value].slice(0, maxPointsLogEntries)
-  })
-
-  conn.on('PlayerAnswered', (payload: { playerId: string; pseudo: string }) => {
-    const id = payload.playerId ?? (payload as unknown as { PlayerId?: string }).PlayerId
-    const pseudo = payload.pseudo ?? (payload as unknown as { Pseudo?: string }).Pseudo ?? ''
-    if (!id || playersWhoAnswered.value.some((p) => p.playerId === id)) return
-    playersWhoAnswered.value = [...playersWhoAnswered.value, { playerId: id, pseudo }]
-  })
-
   try {
-    await conn.start()
-    await conn.invoke('JoinAsHost', code.value)
-    connected.value = true
+    const rt = await createGameRealtime()
+    realtime.value = rt
+    rt.on('GameEnded', () => {
+      gameEnded.value = true
+    })
+    rt.on('Ranking', (payload: unknown) => {
+      ranking.value = normalizeRanking(payload)
+    })
+    rt.on('PointsEarned', (payload: unknown) => {
+      const p = payload as { pseudo?: string; Pseudo?: string; pointsEarned?: number; PointsEarned?: number; rank?: number; Rank?: number }
+      const pseudo = p.pseudo ?? p.Pseudo ?? ''
+      const points = p.pointsEarned ?? p.PointsEarned ?? 0
+      const rank = p.rank ?? p.Rank ?? 0
+      pointsEarnedLog.value = [{ pseudo, points, rank }, ...pointsEarnedLog.value].slice(0, maxPointsLogEntries)
+    })
+    rt.on('PlayerAnswered', (payload: unknown) => {
+      const p = payload as { playerId?: string; PlayerId?: string; pseudo?: string; Pseudo?: string }
+      const id = p.playerId ?? p.PlayerId ?? ''
+      const pseudo = p.pseudo ?? p.Pseudo ?? ''
+      if (!id || playersWhoAnswered.value.some((p) => p.playerId === id)) return
+      playersWhoAnswered.value = [...playersWhoAnswered.value, { playerId: id, pseudo }]
+    })
+    await rt.connectHost(code.value)
     await loadQuizAndPlayers()
     playersInterval = setInterval(async () => {
       if (!connected.value) return
@@ -218,7 +214,6 @@ onMounted(async () => {
     }, 2000)
   } catch (e) {
     connectionError.value = e instanceof Error ? e.message : 'Connexion impossible.'
-    connected.value = false
   }
 })
 
@@ -227,23 +222,22 @@ onUnmounted(async () => {
     clearInterval(playersInterval)
     playersInterval = null
   }
-  const conn = connection.value
-  if (conn) {
+  const rt = realtime.value
+  if (rt) {
     try {
-      await conn.stop()
+      await rt.disconnect()
     } catch {
       // ignore
     }
-    connection.value = null
+    realtime.value = null
   }
-  connected.value = false
 })
 
 async function startGame() {
-  if (!connection.value) return
+  if (!realtime.value) return
   starting.value = true
   try {
-    await connection.value.invoke('StartGame')
+    await realtime.value.startGame()
     gameStarted.value = true
   } catch (e) {
     connectionError.value = e instanceof Error ? e.message : 'Erreur'
@@ -253,7 +247,7 @@ async function startGame() {
 }
 
 async function showQuestion() {
-  if (!connection.value || currentQuestionIndex.value >= questions.value.length) return
+  if (!realtime.value || currentQuestionIndex.value >= questions.value.length) return
   showingQuestion.value = true
   playersWhoAnswered.value = []
   pointsEarnedLog.value = []
@@ -262,7 +256,7 @@ async function showQuestion() {
     const q = questions.value[idx]
     currentQuestionId.value = q.id
     currentQuestionText.value = q.text
-    await connection.value.invoke('ShowQuestion', idx)
+    await realtime.value.showQuestion(idx)
   } catch (e) {
     connectionError.value = e instanceof Error ? e.message : 'Erreur'
   } finally {
@@ -271,11 +265,11 @@ async function showQuestion() {
 }
 
 async function endQuestion() {
-  if (!connection.value || !currentQuestionId.value) return
+  if (!realtime.value || !currentQuestionId.value) return
   endingQuestion.value = true
   try {
     const q = questions.value.find((x) => x.id === currentQuestionId.value)
-    await connection.value.invoke('EndQuestion', currentQuestionId.value, q?.explanation ?? null)
+    await realtime.value.endQuestion(currentQuestionId.value, q?.explanation ?? null)
     currentQuestionIndex.value += 1
     currentQuestionId.value = null
     currentQuestionText.value = ''
@@ -289,11 +283,11 @@ async function endQuestion() {
 }
 
 async function endGame() {
-  if (!connection.value) return
+  if (!realtime.value) return
   endingGame.value = true
   connectionError.value = ''
   try {
-    await connection.value.invoke('EndGame')
+    await realtime.value.endGame()
     gameEnded.value = true
   } catch (e) {
     connectionError.value = e instanceof Error ? e.message : 'Erreur lors de la fin de partie.'
