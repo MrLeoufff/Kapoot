@@ -23,8 +23,8 @@ services:
 
   api:
     build:
-      context: ./backend/src
-      dockerfile: Api/Dockerfile
+      context: ./backend
+      dockerfile: ./docker/prod/Dockerfile
     container_name: kapoot-api
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
@@ -38,7 +38,7 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: ./docker/prod/Dockerfile
     container_name: kapoot-frontend
     depends_on:
       - api

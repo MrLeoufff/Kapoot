@@ -2,13 +2,13 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-COPY ["Api/Kapoot.Api.csproj", "Api/"]
-COPY ["Application/Kapoot.Application.csproj", "Application/"]
-COPY ["Domain/Kapoot.Domain.csproj", "Domain/"]
-COPY ["Infrastructure/Kapoot.Infrastructure.csproj", "Infrastructure/"]
+COPY ["src/Api/Kapoot.Api.csproj", "Api/"]
+COPY ["src/Application/Kapoot.Application.csproj", "Application/"]
+COPY ["src/Domain/Kapoot.Domain.csproj", "Domain/"]
+COPY ["src/Infrastructure/Kapoot.Infrastructure.csproj", "Infrastructure/"]
 
 RUN dotnet restore "Api/Kapoot.Api.csproj"
-COPY . .
+COPY ./src .
 RUN dotnet build "Api/Kapoot.Api.csproj" -c Release -o /app/build
 
 # Publish
