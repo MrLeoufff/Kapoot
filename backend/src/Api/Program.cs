@@ -340,10 +340,20 @@ app.MapPut("/api/admin/users/{id:guid}/admin", async (Guid id, SetUserAdminReque
     }
 }).RequireAuthorization("Admin");
 
-app.MapDelete("/api/admin/quizzes/{id:guid}", async (Guid id, IQuizRepository quizRepo, CancellationToken ct) =>
+app.MapDelete("/api/admin/quizzes/{id:guid}", async (Guid id, IQuizRepository quizRepo, IGameSessionRepository sessionRepo, IPlayerRepository playerRepo, IAnswerRepository answerRepo, CancellationToken ct) =>
 {
     var quiz = await quizRepo.GetByIdAsync(id, ct);
     if (quiz is null) return Results.NotFound();
+    var sessions = await sessionRepo.GetByQuizIdAsync(id, ct);
+    var playerIds = new List<Guid>();
+    foreach (var session in sessions)
+    {
+        var players = await playerRepo.GetByGameSessionIdAsync(session.Id, ct);
+        playerIds.AddRange(players.Select(p => p.Id));
+    }
+    await answerRepo.DeleteByPlayerIdsAsync(playerIds, ct);
+    foreach (var session in sessions)
+        await sessionRepo.DeleteAsync(session, ct);
     await quizRepo.DeleteAsync(id, ct);
     return Results.NoContent();
 }).RequireAuthorization("Admin");

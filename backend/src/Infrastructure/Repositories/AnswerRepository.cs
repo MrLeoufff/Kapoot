@@ -18,6 +18,15 @@ public class AnswerRepository(AppDbContext db) : IAnswerRepository
             .Where(a => a.QuestionId == questionId && a.IsCorrect && db.Players.Any(p => p.Id == a.PlayerId && p.GameSessionId == sessionId))
             .CountAsync(cancellationToken);
 
+    public async Task DeleteByPlayerIdsAsync(IEnumerable<Guid> playerIds, CancellationToken cancellationToken = default)
+    {
+        var ids = playerIds.ToList();
+        if (ids.Count == 0) return;
+        var toRemove = await db.Answers.Where(a => ids.Contains(a.PlayerId)).ToListAsync(cancellationToken);
+        db.Answers.RemoveRange(toRemove);
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<Answer> AddAsync(Answer answer, CancellationToken cancellationToken = default)
     {
         db.Answers.Add(answer);
