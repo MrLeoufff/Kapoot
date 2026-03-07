@@ -81,6 +81,11 @@
           </button>
         </div>
       </section>
+      <section v-else-if="!gameEnded && questionResultExplanation" class="result-explanation-section">
+        <h3 class="result-explanation-title">Explication</h3>
+        <p class="result-explanation-text">{{ questionResultExplanation }}</p>
+        <p class="result-explanation-hint muted">Prochaine question bientôt…</p>
+      </section>
       <section v-else-if="!gameEnded" class="waiting-section">
         <p class="muted">{{ waitingMessage }}</p>
       </section>
@@ -178,6 +183,7 @@ interface ShowQuestionPayload {
 }
 
 const currentQuestion = ref<ShowQuestionPayload | null>(null)
+const questionResultExplanation = ref<string | null>(null)
 const answerSent = ref(false)
 const gameEnded = ref(false)
 const selectedChoiceIds = ref<string[]>([])
@@ -228,6 +234,7 @@ async function startConnection() {
   connection.value = conn
 
   conn.on('ShowQuestion', (payload: ShowQuestionPayload) => {
+    questionResultExplanation.value = null
     currentQuestion.value = payload
     answerSent.value = false
     selectedChoiceIds.value = []
@@ -251,7 +258,9 @@ async function startConnection() {
     }
   })
 
-  conn.on('ShowResult', () => {
+  conn.on('ShowResult', (payload: { questionId?: string; explanation?: string | null; Explanation?: string | null }) => {
+    const raw = payload?.explanation ?? payload?.Explanation
+    questionResultExplanation.value = (typeof raw === 'string' && raw.trim()) ? raw.trim() : null
     currentQuestion.value = null
   })
 
@@ -260,6 +269,7 @@ async function startConnection() {
   })
 
   conn.on('GameEnded', (payload: unknown) => {
+    questionResultExplanation.value = null
     ranking.value = normalizeRanking(payload)
     gameEnded.value = true
     currentQuestion.value = null
@@ -561,6 +571,33 @@ async function submitMultipleChoices() {
 .choice-btn:disabled {
   opacity: 0.7;
   cursor: default;
+}
+
+.result-explanation-section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.result-explanation-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+  color: var(--color-text-muted);
+}
+
+.result-explanation-text {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--color-text);
+}
+
+.result-explanation-hint {
+  margin: 0;
+  font-size: 0.9rem;
 }
 
 .waiting-section {
