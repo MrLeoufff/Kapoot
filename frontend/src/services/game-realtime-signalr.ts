@@ -2,7 +2,7 @@
  * Implémentation temps réel via SignalR (backend C#).
  */
 
-import { ref, type Ref } from 'vue'
+import { ref } from 'vue'
 import * as signalR from '@microsoft/signalr'
 import type { IGameRealtime } from './game-realtime.types'
 import { createGameHubConnection } from './game-hub.service'
@@ -12,8 +12,6 @@ export function createSignalRGameRealtime(): IGameRealtime {
   const handlers = new Map<string, Set<(payload: unknown) => void>>()
   let conn: signalR.HubConnection | null = null
   let isHost = false
-  let hostCode = ''
-  let playerId = ''
 
   function on(event: string, handler: (payload: unknown) => void): void {
     if (!handlers.has(event)) handlers.set(event, new Set())
@@ -30,7 +28,6 @@ export function createSignalRGameRealtime(): IGameRealtime {
   }
 
   async function connectHost(code: string): Promise<void> {
-    hostCode = code
     isHost = true
     conn = createGameHubConnection(null)
     bindHandlers()
@@ -40,7 +37,6 @@ export function createSignalRGameRealtime(): IGameRealtime {
   }
 
   async function connectPlayer(code: string, pId: string): Promise<void> {
-    playerId = pId
     isHost = false
     conn = createGameHubConnection(pId)
     bindHandlers()

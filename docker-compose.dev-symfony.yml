@@ -26,6 +26,7 @@ services:
       context: ./backend-symfony
       dockerfile: Dockerfile
     container_name: kapoot-api-symfony-dev
+    restart: unless-stopped
     environment:
       APP_ENV: dev
       APP_SECRET: ${APP_SECRET:-change-me-in-env-dev}
@@ -33,6 +34,7 @@ services:
       MERCURE_URL: http://mercure:80/.well-known/mercure
       MERCURE_PUBLIC_URL: http://localhost:8080/.well-known/mercure
       MERCURE_JWT_SECRET: ${MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
+      APP_INITIAL_ADMIN_EMAIL: ${APP_INITIAL_ADMIN_EMAIL:-}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-%kernel.project_dir%/config/jwt/private.pem}
       JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-%kernel.project_dir%/config/jwt/public.pem}
       JWT_PASSPHRASE: ${JWT_PASSPHRASE:-}
@@ -45,6 +47,7 @@ services:
   mercure:
     image: dunglas/mercure
     container_name: kapoot-mercure-dev
+    restart: unless-stopped
     environment:
       SERVER_NAME: ':80'
       MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
@@ -61,6 +64,7 @@ services:
       args:
         NGINX_CONF: nginx.symfony.conf
     container_name: kapoot-frontend-dev
+    restart: unless-stopped
     depends_on:
       - api
       - mercure

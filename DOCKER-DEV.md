@@ -13,7 +13,7 @@ Aucune donnée sensible n’est dans les fichiers compose. Il faut un fichier **
 1. Copier le template : `cp .env.dev.example .env.dev` (sous Windows : copier `.env.dev.example` en `.env.dev`)
 2. Renseigner dans `.env.dev` :
    - `MYSQL_ROOT_PASSWORD` et `MYSQL_PASSWORD` (valeurs non vides pour MySQL)
-   - Pour la stack **Symfony** : `MERCURE_JWT_SECRET` (optionnel, valeur par défaut dans le compose), `APP_SECRET`, et éventuellement `JWT_PASSPHRASE` si vous générez les clés JWT à la main
+   - Pour la stack **Symfony** : `MERCURE_JWT_SECRET` (optionnel), `APP_SECRET`, et **`APP_INITIAL_ADMIN_EMAIL`** (l’email du premier compte à inscrire qui aura les droits admin, comme le backend C#)
 
 Ne jamais committer `.env.dev`.
 
@@ -42,13 +42,23 @@ docker compose --env-file .env.dev -f docker-compose.dev.yml up -d
 docker compose --env-file .env.dev -f docker-compose.dev-symfony.yml up -d
 ```
 
-Au premier démarrage, les clés JWT (Lexik) sont générées automatiquement dans le conteneur. Pour créer le schéma de la base :
+Au premier démarrage, les clés JWT (Lexik) sont générées automatiquement dans le conteneur.
+
+**Important :** utilisez bien le fichier **docker-compose.dev-symfony.yml** pour lancer la stack Symfony. Si vous aviez auparavant lancé la stack C# (docker-compose.dev.yml), arrêtez-la puis reconstruisez et relancez la stack Symfony :
 
 ```bash
-docker exec -it kapoot-api-symfony-dev bin/console doctrine:schema:create
+docker compose -f docker-compose.dev.yml down
+docker compose --env-file .env.dev -f docker-compose.dev-symfony.yml build --no-cache api
+docker compose --env-file .env.dev -f docker-compose.dev-symfony.yml up -d
 ```
 
-(ou `doctrine:migrations:migrate` si vous utilisez les migrations.)
+Ensuite **créez le schéma Doctrine une fois** (tables `users`, `quizzes`, etc.) :
+
+```bash
+docker compose --env-file .env.dev -f docker-compose.dev-symfony.yml exec api sh -c "cd /var/www/html && php bin/console doctrine:schema:create"
+```
+
+Sans cela, la table `users` n’existe pas et l’appli Symfony ne peut pas fonctionner. (Vous pouvez aussi utiliser `doctrine:migrations:migrate` si vous utilisez les migrations.)
 
 ## Accès (commun aux deux stacks)
 

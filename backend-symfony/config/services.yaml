@@ -4,6 +4,9 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    # Email du premier compte à promouvoir admin à l'inscription (comme le backend C# Admin:InitialAdminEmail)
+    admin.initial_admin_email.default: ''
+    admin.initial_admin_email: '%env(default:admin.initial_admin_email.default:APP_INITIAL_ADMIN_EMAIL)%'
 
 services:
     # default configuration for services in *this* file
@@ -30,3 +33,11 @@ services:
     App\Application\Repository\ChoiceRepositoryInterface: '@App\Infrastructure\Doctrine\Repository\ChoiceRepository'
     App\Application\Repository\AnswerRepositoryInterface: '@App\Infrastructure\Doctrine\Repository\AnswerRepository'
     App\Application\Repository\ScoreRepositoryInterface: '@App\Infrastructure\Doctrine\Repository\ScoreRepository'
+
+    App\Application\Service\AuthService:
+        arguments:
+            $initialAdminEmail: '%admin.initial_admin_email%'
+
+    App\EventListener\JwtAuthenticationSuccessListener:
+        tags:
+            - { name: kernel.event_listener, event: lexik_jwt_authentication.on_authentication_success, method: onAuthenticationSuccess }

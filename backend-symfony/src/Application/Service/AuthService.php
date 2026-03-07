@@ -13,6 +13,7 @@ final class AuthService
     public function __construct(
         private readonly UserRepositoryInterface $userRepository,
         private readonly UserPasswordHasherInterface $passwordHasher,
+        private readonly string $initialAdminEmail = '',
     ) {
     }
 
@@ -37,6 +38,11 @@ final class AuthService
         $user->setEmail($email);
         $user->setPasswordHash($this->passwordHasher->hashPassword($user, $password));
         $user->setPseudo($pseudo);
+        $initialAdmin = $this->initialAdminEmail !== ''
+            && strtolower(trim($this->initialAdminEmail)) === strtolower($email);
+        if ($initialAdmin) {
+            $user->setIsAdmin(true);
+        }
         $this->userRepository->add($user);
 
         return [
