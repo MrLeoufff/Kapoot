@@ -1,16 +1,11 @@
-# KAPOOT – mode développement (à partager avec l’équipe)
-# Aucune donnée sensible : utiliser .env.dev (voir .env.dev.example).
-# Lancer : docker compose --env-file .env.dev -f docker-compose.dev.yml up -d
-# App : http://localhost:8080  |  API : http://localhost:5000  |  MySQL : localhost:3306
-
 services:
   mysql:
-    image: mysql:8.0
     container_name: kapoot-mysql-dev
+    image: mysql:8.0
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?}
       MYSQL_DATABASE: kapoot
       MYSQL_USER: kapoot
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:?}
     volumes:
       - mysql-data-dev:/var/lib/mysql
@@ -23,13 +18,21 @@ services:
       retries: 5
 
   api:
-    build:
-      context: ./backend/src
-      dockerfile: Api/Dockerfile
     container_name: kapoot-api-dev
+    build:
+      context: ./backend
+      dockerfile: ./docker/dev/Dockerfile
+      args:
+        UID: ${UID:?}
+        GID: ${GID:?}
     environment:
+      ASPNETCORE_URLS: "http://+:80"
       ASPNETCORE_ENVIRONMENT: Development
+      DOTNET_CLI_HOME: "/tmp/.dotnet"
       ConnectionStrings__DefaultConnection: Server=mysql;Database=kapoot;User=kapoot;Password=${MYSQL_PASSWORD:?};
+    user: ${UID:?}:${GID:?}
+    volumes:
+      - ./backend:/app
     depends_on:
       mysql:
         condition: service_healthy
@@ -39,7 +42,7 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: ./docker/dev/Dockerfile
     container_name: kapoot-frontend-dev
     depends_on:
       - api
